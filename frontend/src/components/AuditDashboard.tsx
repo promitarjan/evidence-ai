@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import type { AuditPayload, Claim, AcceptedCitation } from '../types';
 import { DocumentCanvas } from './DocumentCanvas';
 import { EvidenceInspector } from './EvidenceInspector';
-import { Download } from 'lucide-react';
+import { Download, CheckCircle2, Sparkles } from 'lucide-react';
 import { exportDocx } from '../services/api';
+import { formatInTextCitation, formatBibliographyEntry, type CitationStyle } from '../utils/citationStyles';
 
 interface AuditDashboardProps {
   auditData: AuditPayload;
@@ -15,6 +16,7 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
     auditData.claims.length > 0 ? auditData.claims[0].id : null
   );
   const [acceptedCitations, setAcceptedCitations] = useState<AcceptedCitation[]>([]);
+  const [citationStyle, setCitationStyle] = useState<CitationStyle>('APA');
   const [isExporting, setIsExporting] = useState(false);
 
   const activeClaim = claims.find(c => c.id === activeClaimId) || null;
@@ -25,15 +27,15 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
   const reviewCount = claims.filter(c => c.supportLevel === 'Partial').length;
   const unsupportedCount = claims.filter(c => c.supportLevel === 'Unsupported' || c.supportLevel === 'Contradictory').length;
   const resolvedCount = claims.filter(c => c.status === 'accepted').length;
+  const pendingCount = claims.filter(c => c.status === 'pending').length;
 
   const handleAcceptCitation = (claimId: string) => {
     const target = claims.find(c => c.id === claimId);
     if (!target) return;
 
-    // Build citation markers
-    const formattedCit = target.evidence?.formattedCitation || `(Rahman, 2025)`;
-    const formattedBib = target.evidence?.formattedBibEntry || 
-      `Rahman, M. et al. (2025). Thermal stress and yield variability in South Asian river deltas. Journal of Agricultural Climate Science, 18(2), 104-118.`;
+    const citIdx = acceptedCitations.length;
+    const formattedCit = formatInTextCitation(target.evidence, citIdx, citationStyle);
+    const formattedBib = formatBibliographyEntry(target.evidence, citIdx, citationStyle);
 
     const newAccepted: AcceptedCitation = {
       claimId: target.id,
@@ -49,6 +51,12 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
     });
 
     setClaims(prev => prev.map(c => c.id === claimId ? { ...c, status: 'accepted' } : c));
+
+    // Auto-advance to the next pending claim
+    const remainingPending = claims.filter(c => c.id !== claimId && c.status === 'pending');
+    if (remainingPending.length > 0) {
+      setActiveClaimId(remainingPending[0].id);
+    }
   };
 
   const handleIgnoreClaim = (claimId: string) => {
@@ -57,6 +65,19 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
       const remaining = claims.filter(c => c.id !== claimId && c.status !== 'ignored');
       setActiveClaimId(remaining.length > 0 ? remaining[0].id : null);
     }
+  };
+
+  const handleStyleChange = (newStyle: CitationStyle) => {
+    setCitationStyle(newStyle);
+    // Update all existing accepted citations to match new style
+    setAcceptedCitations(prev => prev.map((ac, idx) => {
+      const claim = claims.find(c => c.id === ac.claimId);
+      return {
+        ...ac,
+        formattedCitation: formatInTextCitation(claim?.evidence, idx, newStyle),
+        formattedBibEntry: formatBibliographyEntry(claim?.evidence, idx, newStyle)
+      };
+    }));
   };
 
   const handleExport = async () => {
@@ -69,11 +90,10 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
         acceptedCitations
       );
       
-      // Trigger browser download
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${auditData.documentTitle}_verified_citations.docx`;
+      a.download = `${auditData.documentTitle}_verified_${citationStyle.toLowerCase()}.docx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -87,7 +107,7 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      {/* Top Header & Stats */}
+      {/* Top Header & Controls */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-6 mb-8 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2 mb-1">
@@ -112,28 +132,64 @@ export const AuditDashboard: React.FC<AuditDashboardProps> = ({ auditData }) => 
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={isExporting}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 shadow-sm transition"
-        >
-          {isExporting ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
-              </svg>
-              Generating DOCX...
-            </>
-          ) : (
-            <>
-              <Download className="w-4 h-4 text-emerald-400" />
-              Export DOCX with Citations
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Citation Style Picker */}
+          <div className="flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200 text-xs font-semibold">
+            {(['APA', 'MLA', 'IEEE'] as CitationStyle[]).map((style) => (
+              <button
+                key={style}
+                type="button"
+                onClick={() => handleStyleChange(style)}
+                className={`px-3 py-1.5 rounded-md transition ${
+                  citationStyle === style
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                {style}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold text-white bg-slate-900 hover:bg-slate-800 shadow-sm transition"
+          >
+            {isExporting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                Generating DOCX...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4 text-emerald-400" />
+                Export DOCX with Citations
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* All Resolved Celebration Banner */}
+      {pendingCount === 0 && totalClaims > 0 && (
+        <div className="mb-8 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-emerald-900">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold">All claims audited!</p>
+              <p className="text-xs text-emerald-700">
+                You've reviewed every detected claim. Click <strong>Export DOCX</strong> above to download your citation-enhanced research document.
+              </p>
+            </div>
+          </div>
+          <Sparkles className="w-5 h-5 text-emerald-500 animate-pulse" />
+        </div>
+      )}
 
       {/* Split-Screen Workspace (60% / 40%) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">

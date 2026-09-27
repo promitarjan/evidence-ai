@@ -29,7 +29,7 @@ Build mode: fast
   Learner check: Click "Run Evidence Audit" and watch the interface transition to the Audit Dashboard with highlighted claims in the document.
   Commit: `Implement claim extraction and highlighted document canvas`
 
-- [ ] **3. Exact Evidence Extraction & Verification Inspector**
+- [x] **3. Exact Evidence Extraction & Verification Inspector**
   Becomes usable: Clicking any highlighted claim in the left canvas opens the Evidence Inspector on the right, displaying the exact quoted passage, page coordinates, and support badge (`Strong`, `Partial`, `Contradictory`, `Unsupported`).
   Why now: Proves the core unique kernel—grounding claims in exact source passages with Gemini verification rather than ungrounded reference generation.
   PRD ref: `prd.md > Features and Behavior > 3. Exact Passage Retrieval & Support Verification`, `prd.md > States and Boundaries > No Evidence Found State`
