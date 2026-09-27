@@ -121,9 +121,39 @@ async def parse_documents(
             "status": "success",
             "draft_filename": draft_file.filename,
             "paragraph_count": len(paragraphs),
-            "paragraphs": paragraphs[:5],  # Preview first 5 paragraphs
+            "paragraphs": paragraphs[:5],
             "reference_sources": parsed_references
         }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+from models.schemas import ExportDocxRequest
+from services.docx_exporter import generate_citation_docx
+from fastapi.responses import StreamingResponse
+
+@app.post("/api/export-docx")
+async def export_document(request: ExportDocxRequest):
+    """
+    Generate and stream updated DOCX with inserted citations and bibliography.
+    """
+    try:
+        # Check if original DOCX exists in test_data or storage
+        original_bytes = None
+        test_file = os.path.join(os.path.dirname(__file__), "test_data", "sample_paper.docx")
+        if os.path.exists(test_file) and "sample_paper" in request.originalFileName.lower():
+            with open(test_file, "rb") as f:
+                original_bytes = f.read()
+
+        docx_stream = generate_citation_docx(request, original_bytes)
+        
+        safe_title = "".join(c for c in request.documentTitle if c.isalnum() or c in (' ', '_', '-')).strip()
+        filename = f"{safe_title}_verified.docx"
+        
+        return StreamingResponse(
+            docx_stream,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

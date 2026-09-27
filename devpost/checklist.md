@@ -39,7 +39,7 @@ Build mode: fast
   Learner check: Click a claim in the left canvas; inspect the right panel to see the exact quoted passage, source location, and support status badge.
   Commit: `Implement exact evidence retrieval and verification inspector`
 
-- [ ] **4. Interactive Citation Acceptance & Live Bibliography**
+- [x] **4. Interactive Citation Acceptance & Live Bibliography**
   Becomes usable: Clicking "Accept Citation" dynamically inserts an inline citation marker (e.g. `(Rahman, 2025)`) into the document preview, turns the highlight grey (resolved), and appends the reference to the live bibliography at the bottom.
   Why now: Closes the user interaction loop on the screen before implementing file export.
   PRD ref: `prd.md > Features and Behavior > 4. Interactive Citation Placement & Live Bibliography`
