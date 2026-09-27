@@ -9,7 +9,7 @@ Build mode: fast
 
 ## Slices
 
-- [ ] **1. Project Scaffold & Document Ingestion**
+- [x] **1. Project Scaffold & Document Ingestion**
   Becomes usable: Running FastAPI backend and React frontend. User can land on Project Setup, drop in a draft document (DOCX/PDF) and evidence library PDFs, and trigger the parser.
   Why now: Slices 2–5 depend on having a live backend and frontend pipeline that successfully parses text paragraphs and PDF chunks with spatial coordinates.
   PRD ref: `prd.md > Screens and Layout > Screen 1: Project Setup`, `prd.md > Features and Behavior > 1. Document & Evidence Ingestion`

@@ -43,6 +43,38 @@ def get_sample_reference():
         return FileResponse(sample_path, media_type="application/pdf", filename="rahman_2025_reference.pdf")
     raise HTTPException(status_code=404, detail="Sample reference PDF not found")
 
+from services.claims import extract_claims
+
+@app.post("/api/audit", response_model=None)
+async def audit_document(
+    draft_file: UploadFile = File(...),
+    reference_files: Optional[List[UploadFile]] = File(None)
+):
+    """
+    Execute full claim audit pipeline:
+    1. Parse draft document into paragraphs.
+    2. Extract verifiable claims with citations needed.
+    3. Return full AuditPayload for the frontend dashboard.
+    """
+    try:
+        draft_bytes = await draft_file.read()
+        filename = draft_file.filename or "draft.docx"
+        file_type = "pdf" if filename.lower().endswith(".pdf") else "docx"
+        
+        paragraphs = parse_draft_document(draft_bytes, filename)
+        claims = extract_claims(paragraphs)
+        
+        doc_title = os.path.splitext(filename)[0].replace("_", " ").title()
+        
+        return {
+            "documentTitle": doc_title,
+            "originalFileType": file_type,
+            "paragraphs": paragraphs,
+            "claims": claims
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @app.post("/api/parse")
 async def parse_documents(
     draft_file: UploadFile = File(...),
