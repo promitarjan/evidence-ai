@@ -44,6 +44,7 @@ def get_sample_reference():
     raise HTTPException(status_code=404, detail="Sample reference PDF not found")
 
 from services.claims import extract_claims
+from services.verifier import verify_claim
 
 @app.post("/api/audit", response_model=None)
 async def audit_document(
@@ -54,7 +55,9 @@ async def audit_document(
     Execute full claim audit pipeline:
     1. Parse draft document into paragraphs.
     2. Extract verifiable claims with citations needed.
-    3. Return full AuditPayload for the frontend dashboard.
+    3. Parse reference PDFs into chunked passages.
+    4. Verify each claim against reference chunks + OpenAlex fallback.
+    5. Return full AuditPayload with exact passages and support levels.
     """
     try:
         draft_bytes = await draft_file.read()
@@ -62,15 +65,30 @@ async def audit_document(
         file_type = "pdf" if filename.lower().endswith(".pdf") else "docx"
         
         paragraphs = parse_draft_document(draft_bytes, filename)
-        claims = extract_claims(paragraphs)
+        raw_claims = extract_claims(paragraphs)
         
+        # Parse reference PDFs if provided
+        all_reference_chunks = []
+        if reference_files:
+            for ref in reference_files:
+                if ref.filename and ref.filename.lower().endswith(".pdf"):
+                    ref_bytes = await ref.read()
+                    chunks = parse_reference_pdf(ref_bytes, ref.filename)
+                    all_reference_chunks.extend(chunks)
+
+        # Run hybrid verification for each claim
+        verified_claims = []
+        for c in raw_claims:
+            verified = verify_claim(c, all_reference_chunks)
+            verified_claims.append(verified)
+            
         doc_title = os.path.splitext(filename)[0].replace("_", " ").title()
         
         return {
             "documentTitle": doc_title,
             "originalFileType": file_type,
             "paragraphs": paragraphs,
-            "claims": claims
+            "claims": verified_claims
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

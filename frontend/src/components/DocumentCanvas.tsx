@@ -36,9 +36,21 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     let lastIndex = 0;
 
     sortedClaims.forEach((claim) => {
-      const startIdx = para.text.indexOf(claim.sentenceText, lastIndex);
+      let startIdx = para.text.indexOf(claim.sentenceText, lastIndex);
+      let matchLen = claim.sentenceText.length;
+
       if (startIdx === -1) {
-        return; // sentence not found verbatim
+        // Fallback: match case-insensitively or trimmed
+        const lowerPara = para.text.toLowerCase();
+        const lowerSentence = claim.sentenceText.toLowerCase().trim();
+        startIdx = lowerPara.indexOf(lowerSentence, lastIndex);
+        if (startIdx !== -1) {
+          matchLen = lowerSentence.length;
+        }
+      }
+
+      if (startIdx === -1) {
+        return; // sentence not found
       }
 
       // Add leading normal text
@@ -82,7 +94,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         </span>
       );
 
-      lastIndex = startIdx + claim.sentenceText.length;
+      lastIndex = startIdx + matchLen;
     });
 
     // Add trailing normal text

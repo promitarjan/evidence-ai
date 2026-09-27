@@ -19,7 +19,7 @@ Build mode: fast
   Learner check: Open `http://localhost:5173`, see the clean Project Setup landing page, upload a sample draft and evidence PDF, and see the file names and sizes reflected.
   Commit: `Scaffold project and implement document ingestion`
 
-- [ ] **2. Gemini Claim Extraction & Color-Coded Document Canvas**
+- [x] **2. Gemini Claim Extraction & Color-Coded Document Canvas**
   Becomes usable: The audit executes: Gemini extracts verifiable claims using structured JSON schema, and the user is transitioned to the Audit Dashboard with claims highlighted in green, yellow, and red.
   Why now: The visual canvas with interactive claim highlights is the foundation of the audit dashboard.
   PRD ref: `prd.md > Screens and Layout > Screen 2: Audit Dashboard`, `prd.md > Features and Behavior > 2. Claim Identification & Canvas Highlighting`

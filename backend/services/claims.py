@@ -18,9 +18,9 @@ class ClaimListResponse(BaseModel):
     claims: List[ExtractedClaimItem]
 
 SYSTEM_PROMPT = """You are EvidenceAI, an expert academic research auditor.
-Analyze the provided paragraphs from a draft research paper.
+Analyze the provided paragraphs from a draft research paper or essay.
 Identify specific statements that make factual, statistical, or scientific claims requiring external verifiable evidence.
-Exclude broad general statements, introductory framing, or pure opinions that do not require citations.
+Exclude broad general statements, introductory filler, or personal opinions that do not require citations.
 
 For each identified claim:
 1. `paragraphIdx`: the exact zero-based index of the paragraph.
@@ -30,49 +30,88 @@ For each identified claim:
 5. `reasoning`: brief explanation of why this claim needs academic evidence.
 """
 
+# Broad academic assertion indicators
+STATISTICAL_PATTERN = re.compile(
+    r'(\b\d+[\d,.]*\s*(%|percent|billion|million|thousand|kg|ton|cm|mm|mhz|ghz)?\b|'
+    r'\b(increased|decreased|reduced|reduces|declining|doubled|tripled|accounts for|majority|average|proportion|growth rate|ratio)\b)',
+    re.IGNORECASE
+)
+
+EMPIRICAL_PATTERN = re.compile(
+    r'\b(demonstrates?|found that|indicates?|evidence suggests?|showed|observed|reported|identified|proves?|'
+    r'results? in|leads? to|impacts?|affects?|influences?|causes?|is driven by|plays a (critical|major|key) role|'
+    r'is (defined|known|considered|recognized) as|developed by|originated|discovered|et al\.|\[\d+\])\b',
+    re.IGNORECASE
+)
+
 def extract_claims_fallback(paragraphs: List[DocumentParagraph]) -> List[Claim]:
     """
-    High-fidelity deterministic fallback extractor for environments without an active Gemini API key.
-    Detects empirical, statistical, and scientific sentences requiring citations.
+    Robust universal academic claim extractor for any essay or paper.
+    Scans every paragraph, splits into exact sentences, identifies factual, statistical,
+    and empirical assertions, and ensures every substantial paragraph is properly audited.
     """
     claims: List[Claim] = []
-    
-    # Statistical pattern (percentages, numbers, reductions)
-    stat_regex = re.compile(r'(\d+[\d,.]*\s*(%|percent|billion|million|kg|ton)|reduced|reduces|declining|increased|accounts for)', re.IGNORECASE)
-    # Scientific / empirical pattern
-    sci_regex = re.compile(r'(temperature variability|thermal stress|grain fertility|flowering stage|climate-vulnerable|topography|irrigation)', re.IGNORECASE)
 
     for p in paragraphs:
-        # Split paragraph into sentences
-        sentences = re.split(r'(?<=[.!?])\s+', p.text)
-        for s in sentences:
-            s_clean = s.strip()
-            if len(s_clean) < 15:
+        text = p.text.strip()
+        if len(text) < 15:
+            continue
+
+        # Split into sentences using punctuation boundaries
+        raw_sentences = re.split(r'(?<=[.!?])\s+', text)
+        clean_sentences = [s.strip() for s in raw_sentences if len(s.strip()) >= 12]
+        
+        if not clean_sentences:
+            continue
+
+        matched_in_para = False
+
+        for s in clean_sentences:
+            # Ensure sentence is an exact substring of paragraph text
+            if s not in text:
                 continue
+
+            is_stat = bool(STATISTICAL_PATTERN.search(s))
+            is_emp = bool(EMPIRICAL_PATTERN.search(s))
+
+            if is_stat or is_emp:
+                matched_in_para = True
+                claim_type: ClaimType = "statistical" if is_stat else "scientific" if ("temperature" in s.lower() or "clinical" in s.lower() or "biological" in s.lower() or "system" in s.lower()) else "factual"
                 
-            has_stat = bool(stat_regex.search(s_clean))
-            has_sci = bool(sci_regex.search(s_clean))
-            
-            if has_stat or has_sci:
-                claim_type: ClaimType = "statistical" if has_stat else "scientific"
-                
-                # Preliminary support level for visualization in Slice 2
-                support_lvl: SupportLevel = "Strong" if "fertility" in s_clean.lower() else "Partial"
-                if "accounts for" in s_clean.lower():
+                # Default support level indicator for visual feedback
+                support_lvl: SupportLevel = "Strong" if ("%" in s or "202" in s or "results" in s.lower()) else "Partial"
+                if "accounts for" in s.lower() or "historically" in s.lower():
                     support_lvl = "Unsupported"
 
                 claims.append(Claim(
                     id=f"claim-{uuid.uuid4().hex[:8]}",
                     paragraphIdx=p.index,
-                    sentenceText=s_clean,
+                    sentenceText=s,
                     claimType=claim_type,
                     supportLevel=support_lvl,
                     confidence=0.92,
-                    reasoning=f"Asserts a specific {claim_type} finding regarding agricultural climate effects requiring verifiable source evidence.",
+                    reasoning=f"Asserts a specific {claim_type} claim requiring empirical citation or source grounding.",
                     evidence=None,
                     status="pending"
                 ))
-                
+
+        # If no specific sentence matched in a substantial paragraph, select the most substantive declarative sentence
+        if not matched_in_para and len(clean_sentences) > 0:
+            # Pick the longest informative sentence
+            longest_sentence = max(clean_sentences, key=len)
+            if longest_sentence in text:
+                claims.append(Claim(
+                    id=f"claim-{uuid.uuid4().hex[:8]}",
+                    paragraphIdx=p.index,
+                    sentenceText=longest_sentence,
+                    claimType="factual",
+                    supportLevel="Partial",
+                    confidence=0.85,
+                    reasoning="Core thematic assertion in paragraph requiring supporting academic literature.",
+                    evidence=None,
+                    status="pending"
+                ))
+
     return claims
 
 def extract_claims_with_gemini(paragraphs: List[DocumentParagraph]) -> List[Claim]:
@@ -85,7 +124,6 @@ def extract_claims_with_gemini(paragraphs: List[DocumentParagraph]) -> List[Clai
         
         client = genai.Client(api_key=GEMINI_API_KEY)
         
-        # Prepare text with paragraph indices
         content_lines = []
         for p in paragraphs:
             content_lines.append(f"[Paragraph {p.index}]: {p.text}")
@@ -101,25 +139,36 @@ def extract_claims_with_gemini(paragraphs: List[DocumentParagraph]) -> List[Clai
             )
         )
         
-        # Parse validated response
         parsed = ClaimListResponse.model_validate_json(response.text)
         claims: List[Claim] = []
         for item in parsed.claims:
             if item.requiresCitation:
+                # Find matching paragraph text to ensure exact substring match
+                matching_p = next((p for p in paragraphs if p.index == item.paragraphIdx), None)
+                matched_sentence = item.sentenceText
+                if matching_p and item.sentenceText not in matching_p.text:
+                    # Find closest sentence substring in paragraph
+                    for s in re.split(r'(?<=[.!?])\s+', matching_p.text):
+                        if s in item.sentenceText or item.sentenceText in s:
+                            matched_sentence = s.strip()
+                            break
+
                 claims.append(Claim(
                     id=f"claim-{uuid.uuid4().hex[:8]}",
                     paragraphIdx=item.paragraphIdx,
-                    sentenceText=item.sentenceText,
+                    sentenceText=matched_sentence,
                     claimType=item.claimType,
-                    supportLevel="Partial",  # Initial state prior to evidence matching in Slice 3
+                    supportLevel="Partial",
                     confidence=0.95,
                     reasoning=item.reasoning,
                     evidence=None,
                     status="pending"
                 ))
-        return claims
+        if claims:
+            return claims
+        return extract_claims_fallback(paragraphs)
     except Exception as e:
-        print(f"Gemini claim extraction warning (falling back to deterministic extractor): {e}")
+        print(f"Gemini claim extraction warning (falling back to universal extractor): {e}")
         return extract_claims_fallback(paragraphs)
 
 def extract_claims(paragraphs: List[DocumentParagraph]) -> List[Claim]:
