@@ -49,7 +49,7 @@ Build mode: fast
   Learner check: Click "Accept Citation" on a verified claim; see the highlight change to grey, the `(Author, Year)` citation appear inline, and the reference appear in the bibliography below.
   Commit: `Implement inline citation placement and live bibliography`
 
-- [ ] **5. Round-Trip DOCX Generation & Export**
+- [x] **5. Round-Trip DOCX Generation & Export**
   Becomes usable: Clicking "Export DOCX" in the top header downloads a modified Word document with all accepted citations embedded in their proper sentences and an academic References section appended.
   Why now: The final deliverable completing the full end-to-end journey.
   PRD ref: `prd.md > Features and Behavior > 5. Round-Trip DOCX Export`
@@ -61,24 +61,25 @@ Build mode: fast
 
 ## Hands-on Checkpoints
 
-- [ ] Early usable behavior explored — Slice 2: Document canvas with interactive claim highlights live in browser
-- [ ] Final kick-the-tires exploration and feedback completed — Slice 5: Full loop from upload to DOCX export
+- [x] Early usable behavior explored — Slice 2: Document canvas with interactive claim highlights live in browser
+- [x] Final kick-the-tires exploration and feedback completed — Slice 5: Full loop from upload to DOCX export
 
 ## Final Review
 
-- [ ] Final review complete — feedback resolved and learner confirms ready to ship
+- [x] Final review complete — feedback resolved and learner confirms ready to ship
 
 ## Code Tour and App Map
 
-- [ ] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
-- [ ] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
-- [ ] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
+- [x] Learning activity complete — guided route, focused alternative, prior practice connected, or brief recap
+- [x] Optional edit and transfer reflection addressed — offered/declined/already covered/not applicable as appropriate
+- [x] `devpost/app-map.html` generated from finished code, checked, and shown, including a project-grounded practice to reuse
 
-Activity and evidence: 
-Route and stops: 
-Edit outcome: 
-Reflection: 
-Activity mode: 
+Activity and evidence: Connected the Claim → Evidence → Verification → Citation pipeline across backend and frontend; verified with sample paper DOCX and reference PDF.
+Route and stops: 1. `backend/services/parser.py` (spatial parsing), 2. `backend/services/claims.py` & `backend/services/verifier.py` (structured extraction & grounding), 3. `frontend/src/components/AuditDashboard.tsx` & `backend/services/docx_exporter.py` (interactive placement & round-trip export).
+Edit outcome: Not applicable (learner verified build and directed transition straight to shipping).
+Reflection: Reusable practice documented in app-map: pairing structured AI output schemas with deterministic fallback parsers.
+Activity mode: Brief evidence-based recap.
 
 ## Revisions
+
 
