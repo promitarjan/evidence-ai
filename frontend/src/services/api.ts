@@ -1,6 +1,6 @@
 import type { ParseResult, AuditPayload, AcceptedCitation } from '../types';
 
-const API_BASE_URL = 'http://localhost:8000/api';
+const API_BASE_URL = '/api';
 
 export async function checkBackendHealth(): Promise<{ status: string; gemini_configured: boolean }> {
   const res = await fetch(`${API_BASE_URL}/health`);

@@ -47,8 +47,8 @@ export const ProjectSetup: React.FC<ProjectSetupProps> = ({ onRunAudit, isLoadin
     try {
       setErrorMsg(null);
       // Fetch sample files from backend test_data if available
-      const docxRes = await fetch('http://localhost:8000/api/sample/draft');
-      const pdfRes = await fetch('http://localhost:8000/api/sample/reference');
+      const docxRes = await fetch('/api/sample/draft');
+      const pdfRes = await fetch('/api/sample/reference');
       
       if (docxRes.ok && pdfRes.ok) {
         const docxBlob = await docxRes.blob();

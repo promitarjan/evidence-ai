@@ -48,7 +48,7 @@ def search_openalex(claim_text: str) -> Optional[Dict[str, Any]]:
     }
     
     try:
-        with httpx.Client(timeout=6.0) as client:
+        with httpx.Client(timeout=2.0) as client:
             resp = client.get(url, headers=headers)
             if resp.status_code != 200:
                 return None
