@@ -331,6 +331,26 @@
     </section>
 
     <section>
+      <h2>API Configuration &amp; Bring Your Own Key (BYOK)</h2>
+      <div class="callout" style="background:#f0fdf4; border-color:#86efac;">
+        <div class="callout-title" style="color:#166534;">Security &amp; Zero Hardcoded Secrets</div>
+        <p style="margin-bottom:0.5rem;">
+          This codebase intentionally <strong>does not contain any hardcoded API keys or credentials</strong>.
+        </p>
+        <ul style="margin-bottom:0.5rem;">
+          <li>
+            <strong>Google Gemini API:</strong> Users bring their own API key. Set the <code>GEMINI_API_KEY</code> environment variable or add it to a local <code>backend/.env</code> file:
+            <pre style="margin:0.5rem 0 0.5rem 0; padding:0.5rem 0.75rem;">GEMINI_API_KEY=your_gemini_api_key_here</pre>
+            <em>Note: If no key is configured, EvidenceAI automatically runs in offline fallback mode using deterministic rule-based sentence heuristics.</em>
+          </li>
+          <li>
+            <strong>OpenAlex API:</strong> Requires no API key. EvidenceAI queries OpenAlex's public polite pool out-of-the-box for external scholarly grounding.
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section>
       <h2>How to Run the Application</h2>
       <pre># 1. Start the FastAPI backend
 cd backend
@@ -345,7 +365,7 @@ http://localhost:5173</pre>
     </section>
 
     <footer>
-      <span>Git Snapshot: Commit <code>06780da</code></span>
+      <span>Git Snapshot: Commit <code>ceb90c1</code></span>
       <span>Build With AI: Basics Hackathon</span>
     </footer>
   </div>
